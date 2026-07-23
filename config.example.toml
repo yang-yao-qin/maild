@@ -1,11 +1,15 @@
-# 本地监听地址
-listen = "127.0.0.1:8080"
+# maild configuration
 
-# Resend API Key
-api_key = "请填写你的 API Key"
+[server]
+# 监听地址 — 必须为 127.0.0.1，仅允许本机访问
+address = "127.0.0.1:8080"
 
-# 可使用的发件身份
+[resend]
+# Resend API Key — https://resend.com/api-keys
+api_key = "re_xxxx"
+
 [senders]
-
-me = "me@domain.org"
-contact = "contact@domain.org"
+# 发件身份（标签 = 邮箱地址）
+# WebUI 的下拉框将展示这些邮箱地址
+me = "me@example.org"
+contact = "contact@example.org"

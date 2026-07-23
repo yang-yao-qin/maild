@@ -124,6 +124,7 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !valid {
+			log.Printf("WARN  sender rejected: %q", req.From)
 			s.writeJSON(w, http.StatusForbidden, sendResponse{
 				Success: false,
 				Message: fmt.Sprintf("Sender %q is not allowed. Use one of the configured sender labels.", req.From),
@@ -144,7 +145,7 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 	// Render Markdown to HTML.
 	html, err := markdown.RenderHTML(req.Markdown)
 	if err != nil {
-		log.Printf("Markdown rendering error: %v", err)
+		log.Printf("ERROR markdown render: %v", err)
 		s.writeJSON(w, http.StatusInternalServerError, sendResponse{
 			Success: false,
 			Message: "Failed to render markdown to HTML.",
@@ -161,13 +162,15 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.provider.Send(m); err != nil {
-		log.Printf("Failed to send email: %v", err)
+		log.Printf("ERROR send failed: %v", err)
 		s.writeJSON(w, http.StatusInternalServerError, sendResponse{
 			Success: false,
 			Message: fmt.Sprintf("Failed to send email: %v", err),
 		})
 		return
 	}
+
+	log.Printf("INFO  sent: from=%s to=%s subject=%q", fromAddr, req.To, req.Subject)
 
 	s.writeJSON(w, http.StatusOK, sendResponse{
 		Success: true,

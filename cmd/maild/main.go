@@ -7,7 +7,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -28,41 +27,41 @@ func main() {
 		*configPath = flag.Arg(0)
 	}
 
-	// Resolve web directory relative to the config file's directory,
-	// so the tool works when invoked from a different working directory.
+	// Resolve web directory.
 	absWebDir, err := filepath.Abs(*webDir)
 	if err != nil {
-		log.Fatalf("Failed to resolve web directory: %v", err)
+		log.Fatalf("ERROR resolve web directory: %v", err)
 	}
 	if _, err := os.Stat(absWebDir); os.IsNotExist(err) {
-		// Try relative to the config file's directory.
 		cfgDir := filepath.Dir(*configPath)
 		alt := filepath.Join(cfgDir, *webDir)
 		if _, err2 := os.Stat(alt); err2 == nil {
 			absWebDir = alt
 		} else {
-			log.Fatalf("Web directory not found: %s (or %s)", absWebDir, alt)
+			log.Fatalf("ERROR web directory not found: %s (or %s)", absWebDir, alt)
 		}
 	}
 
 	// Load configuration.
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("ERROR load config: %v", err)
 	}
 
 	// Initialize the Resend mail provider.
 	p := provider.NewResendProvider(cfg.Resend.APIKey)
 
-	// Create and start the HTTP server.
+	// Create the HTTP server.
 	srv := server.New(cfg, p, absWebDir)
 
-	fmt.Printf("maild starting on http://%s\n", cfg.Server.Address)
-	fmt.Printf("Web assets: %s\n", absWebDir)
-	fmt.Println("Open your browser to compose and send email.")
-	fmt.Println("Press Ctrl+C to stop.")
+	// Startup log sequence.
+	log.Printf("INFO  maild starting")
+	log.Printf("INFO  listen: %s", cfg.Server.Address)
+	log.Printf("INFO  web root: %s", absWebDir)
+	log.Printf("INFO  provider: resend")
+	log.Printf("INFO  ready")
 
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Fatalf("ERROR server: %v", err)
 	}
 }

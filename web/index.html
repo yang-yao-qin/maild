@@ -1,53 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maild — Compose</title>
+<title>素笺</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+
+<!-- Top: layered distant mountains in warm ink-wash style.
+     Based on analysis of the reference image:
+     - Three-part structure: sky → mountains (y=40-75%) → water
+     - Left-side emphasis, warm beige/sepia tones
+     - Ink density peaks in the lower portion of the mountain range -->
+<svg class="mountain-silhouette" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true">
+  <!-- Farthest ridge — barely visible, like mist dissolving into sky -->
+  <path d="M0 80 Q160 62 340 68 Q500 50 660 62 Q820 42 1000 56 Q1160 48 1320 58 Q1380 54 1440 56 L1440 160 Z" fill="currentColor" opacity=".2"/>
+  <!-- Second ridge — left-weighted, faint silhouette -->
+  <path d="M0 100 Q120 80 280 84 Q420 68 560 78 Q700 58 860 72 Q980 62 1100 70 Q1200 64 1300 72 Q1380 66 1440 70 L1440 160 Z" fill="currentColor" opacity=".45"/>
+  <!-- Main ridge — the mountain body, darkest in lower half, left side heavier -->
+  <path d="M0 120 Q80 100 200 104 Q340 86 480 95 Q600 78 740 90 Q860 76 980 86 Q1100 80 1200 88 Q1300 82 1400 86 Q1420 84 1440 84 L1440 160 Z" fill="currentColor" opacity=".75"/>
+  <!-- Near peaks — individual summits breaking the ridge, left-dominant -->
+  <path d="M180 108 Q240 62 300 76 Q360 48 420 66 Q470 38 530 58 Q580 44 620 64 Q680 52 720 72 Q780 50 820 68 Q860 58 880 64" fill="none" stroke="currentColor" stroke-width=".7" opacity=".4"/>
+  <!-- Faint mist band cutting across mid-mountain -->
+  <path d="M0 112 Q280 106 560 110 Q840 114 1120 108 Q1320 104 1440 108" fill="none" stroke="currentColor" stroke-width=".4" opacity=".15"/>
+</svg>
+
 <main>
-  <h1>✉️ Maild</h1>
-  <p class="subtitle">Compose and send email from your domain</p>
-
-  <form id="compose-form">
-    <div class="field">
-      <label for="from">From</label>
-      <select id="from" name="from" required>
-        <option value="">Loading senders…</option>
-      </select>
+  <form id="compose-form" autocomplete="off">
+    <div class="meta-fields">
+      <div class="field-row">
+        <label for="from">发件人</label>
+        <select id="from" name="from" required></select>
+      </div>
+      <div class="field-row">
+        <label for="to">收件人</label>
+        <input type="email" id="to" name="to" placeholder="收件人邮箱" required>
+      </div>
+      <div class="field-row">
+        <label for="subject">主题</label>
+        <input type="text" id="subject" name="subject" placeholder="邮件主题" required>
+      </div>
     </div>
 
-    <div class="field">
-      <label for="to">To</label>
-      <input type="email" id="to" name="to" placeholder="recipient@example.com" required autocomplete="off">
-    </div>
-
-    <div class="field">
-      <label for="subject">Subject</label>
-      <input type="text" id="subject" name="subject" placeholder="Email subject" required autocomplete="off">
-    </div>
-
-    <div class="field">
-      <label for="markdown">Body <span class="hint">(Markdown)</span></label>
-      <textarea id="markdown" name="markdown" rows="16" placeholder="Write your message in Markdown…" required></textarea>
-    </div>
+    <textarea id="markdown" name="markdown" placeholder="在此书写正文…&#10;&#10;支持 Markdown 格式" required></textarea>
 
     <div class="actions">
-      <button type="button" id="preview-btn" class="secondary">Preview</button>
-      <button type="submit" id="send-btn">Send</button>
+      <button type="button" id="preview-btn" class="ghost">预览</button>
+      <button type="submit" id="send-btn">发送</button>
     </div>
   </form>
 
   <div id="preview-panel" class="hidden">
-    <h2>Preview</h2>
     <div id="preview-content"></div>
-    <button type="button" id="close-preview" class="secondary">Close preview</button>
+    <button type="button" id="close-preview" class="ghost">← 返回编辑</button>
   </div>
 
   <div id="status" class="hidden"></div>
 </main>
+
+<!-- Bottom: faint water — three barely-there lines suggesting a still surface -->
+<svg class="water-decoration" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0 36 Q360 32 720 38 Q1080 42 1440 36" fill="none" stroke="currentColor" stroke-width=".5"/>
+  <path d="M0 46 Q400 42 800 48 Q1200 52 1440 46" fill="none" stroke="currentColor" stroke-width=".3"/>
+</svg>
+
+<!-- Bottom-right: a few willow branches, naturally drooping -->
+<svg class="willow-decoration" viewBox="0 0 100 220" aria-hidden="true">
+  <g fill="none" stroke="currentColor" stroke-linecap="round">
+    <!-- Main drooping stem -->
+    <path d="M80 0 Q78 50 74 100 Q72 140 70 190 Q68 210 66 218" stroke-width=".9"/>
+    <!-- Secondary stem -->
+    <path d="M74 30 Q66 70 62 120 Q60 150 58 180" stroke-width=".6"/>
+    <!-- Slender leaves along main stem -->
+    <path d="M76 55 Q66 58 60 54" stroke-width=".4"/>
+    <path d="M75 75 Q64 78 58 74" stroke-width=".4"/>
+    <path d="M74 95 Q63 98 57 94" stroke-width=".35"/>
+    <path d="M73 120 Q62 123 56 119" stroke-width=".35"/>
+    <path d="M72 145 Q61 148 55 144" stroke-width=".3"/>
+    <path d="M71 170 Q60 173 54 169" stroke-width=".25"/>
+    <path d="M70 195 Q60 198 54 194" stroke-width=".25"/>
+    <!-- Leaves along secondary stem -->
+    <path d="M68 50 Q58 52 54 48" stroke-width=".35"/>
+    <path d="M65 75 Q56 77 52 73" stroke-width=".3"/>
+    <path d="M63 105 Q54 107 50 103" stroke-width=".3"/>
+    <path d="M61 135 Q52 137 48 133" stroke-width=".25"/>
+  </g>
+</svg>
+
 <script src="/app.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Maild — compose form logic. No framework, vanilla JS only.
+// Maild — compose form logic.
 
 const form = document.getElementById('compose-form');
 const fromSelect = document.getElementById('from');
@@ -12,36 +12,30 @@ const previewContent = document.getElementById('preview-content');
 const closePreviewBtn = document.getElementById('close-preview');
 const statusEl = document.getElementById('status');
 
-// Load sender identities from the server.
+// Load sender identities — display email addresses only, no labels.
 async function loadSenders() {
   try {
     const resp = await fetch('/api/senders');
     if (!resp.ok) throw new Error('Failed to load senders');
     const senders = await resp.json();
 
-    fromSelect.innerHTML = '<option value="">Choose sender…</option>';
+    fromSelect.innerHTML = '';
     for (const s of senders) {
       const opt = document.createElement('option');
-      opt.value = s.label;
-      opt.textContent = `${s.label} — ${s.address}`;
+      opt.value = s.address;
+      opt.textContent = s.address;
       fromSelect.appendChild(opt);
     }
   } catch (err) {
-    fromSelect.innerHTML = '<option value="">Failed to load senders</option>';
-    showStatus('error', 'Could not load sender identities. Is the server running?');
+    fromSelect.innerHTML = '<option value="">加载失败</option>';
+    showStatus('error', '无法加载发件人列表，请确认服务是否运行。');
   }
 }
 
-// Preview: render markdown client-side for a quick preview.
+// Preview toggle.
 previewBtn.addEventListener('click', () => {
   const md = markdownTextarea.value.trim();
-  if (!md) {
-    previewContent.innerHTML = '<p style="color: var(--muted)">Nothing to preview.</p>';
-  } else {
-    // Simple client-side Markdown-to-HTML using a minimal converter.
-    // For a faithful preview we call the server, but for speed we do a basic render.
-    previewContent.innerHTML = simpleMarkdownToHTML(md);
-  }
+  previewContent.innerHTML = md ? simpleMarkdownToHTML(md) : '<p style="color: var(--ink-faint)">暂无内容。</p>';
   form.classList.add('hidden');
   previewPanel.classList.remove('hidden');
 });
@@ -55,24 +49,23 @@ closePreviewBtn.addEventListener('click', () => {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const from = fromSelect.value;
+  const from = fromSelect.value.trim();
   const to = toInput.value.trim();
   const subject = subjectInput.value.trim();
   const markdown = markdownTextarea.value.trim();
 
   if (!from || !to || !subject || !markdown) {
-    showStatus('error', 'All fields are required.');
+    showStatus('error', '请填写所有字段。');
     return;
   }
 
-  // Basic email validation.
   if (!to.includes('@')) {
-    showStatus('error', 'Please enter a valid recipient email address.');
+    showStatus('error', '请填写有效的收件人邮箱。');
     return;
   }
 
   sendBtn.disabled = true;
-  sendBtn.textContent = 'Sending…';
+  sendBtn.textContent = '发送中…';
   hideStatus();
 
   try {
@@ -85,9 +78,7 @@ form.addEventListener('submit', async (e) => {
     const data = await resp.json();
 
     if (data.success) {
-      showStatus('success', data.message);
-      // Clear the form on success for quick follow-up sends.
-      // Keep the sender selection, clear the rest.
+      showStatus('success', '已发送');
       toInput.value = '';
       subjectInput.value = '';
       markdownTextarea.value = '';
@@ -95,10 +86,10 @@ form.addEventListener('submit', async (e) => {
       showStatus('error', data.message);
     }
   } catch (err) {
-    showStatus('error', 'Network error. Could not reach the server.');
+    showStatus('error', '网络异常，无法连接服务。');
   } finally {
     sendBtn.disabled = false;
-    sendBtn.textContent = 'Send';
+    sendBtn.textContent = '发送';
   }
 });
 
@@ -114,56 +105,52 @@ function hideStatus() {
   statusEl.classList.add('hidden');
 }
 
-// Minimal client-side Markdown renderer for the preview panel.
-// This is intentionally simple — the server does the real rendering for email.
+// Simple client-side Markdown renderer for preview.
 function simpleMarkdownToHTML(md) {
   let html = md;
 
-  // Escape HTML entities
+  // Escape HTML.
   html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Headers
+  // Headers.
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-  // Bold and italic
+  // Bold / italic.
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-  // Inline code
+  // Inline code.
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-  // Links
+  // Links.
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
-  // Blockquotes
+  // Blockquotes.
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
 
-  // Unordered lists — group consecutive list items
+  // Lists.
   html = html.replace(/((?:^- .+\n?)+)/gm, (match) => {
     const items = match.trim().split('\n').map(line => `<li>${line.replace(/^- /, '')}</li>`).join('');
     return `<ul>${items}</ul>`;
   });
-
-  // Ordered lists
   html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (match) => {
     const items = match.trim().split('\n').map(line => `<li>${line.replace(/^\d+\. /, '')}</li>`).join('');
     return `<ol>${items}</ol>`;
   });
 
-  // Paragraphs — wrap remaining text blocks
+  // Paragraphs.
   html = html.replace(/\n\n/g, '</p><p>');
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
-
-  // Line breaks
   html = html.replace(/\n/g, '<br>');
 
   return html;
 }
 
-// Initialize on page load.
+// Auto-focus the editor on load, so the user can start writing immediately.
 loadSenders();
+markdownTextarea.focus();
