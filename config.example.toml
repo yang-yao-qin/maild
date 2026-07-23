@@ -1,0 +1,11 @@
+# 本地监听地址
+listen = "127.0.0.1:8080"
+
+# Resend API Key
+api_key = "请填写你的 API Key"
+
+# 可使用的发件身份
+[senders]
+
+me = "me@domain.org"
+contact = "contact@domain.org"

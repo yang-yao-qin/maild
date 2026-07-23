@@ -1,0 +1,14 @@
+# 本地配置（包含 API Key）
+config.toml
+
+# Go 编译产物
+maild
+
+# Windows 编译产物
+*.exe
+
+# Go 测试
+*.test
+
+# 性能分析
+*.prof
