@@ -167,58 +167,50 @@ main {
 .attachments-area {
   grid-column: 2;
   grid-row: 2;
-  padding: 8px 16px;
+  padding: 6px 16px;
   background: #fefdfb;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
 
-.attachments-area > label {
+#attachment-label {
+  display: inline-block;
   font-size: .78rem;
-  color: var(--ink-faint);
+  color: var(--ink-light);
   font-weight: 500;
-  margin-right: 10px;
-}
-
-.attachments-area input[type="file"] {
-  font-family: var(--serif);
-  font-size: .82rem;
-  color: var(--ink-light);
-  border: none;
-  background: transparent;
-}
-
-.attachments-area input[type="file"]::file-selector-button {
-  font-family: var(--serif);
-  font-size: .78rem;
-  padding: 3px 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--paper-warm);
-  color: var(--ink-light);
   cursor: pointer;
-  margin-right: 8px;
+  user-select: none;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--paper-warm);
+}
+
+#attachment-label:hover {
+  color: var(--ink);
+  background: var(--border);
 }
 
 #attachment-list {
   list-style: none;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
 #attachment-list li {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: .78rem;
+  gap: 6px;
+  font-size: .8rem;
   color: var(--ink-light);
-  background: var(--paper-warm);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 0;
+}
+
+#attachment-list li::before {
+  content: '📎';
+  font-size: .75rem;
+  flex-shrink: 0;
 }
 
 #attachment-list li button {
@@ -229,6 +221,7 @@ main {
   font-size: .85rem;
   padding: 0 2px;
   line-height: 1;
+  margin-left: auto;
 }
 
 #attachment-list li button:hover {

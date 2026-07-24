@@ -49,20 +49,20 @@
     <textarea id="markdown" name="markdown" placeholder="在此书写正文…&#10;&#10;支持 Markdown 格式" required></textarea>
 
     <div class="attachments-area">
-      <label for="attachment-input">附件</label>
-      <input type="file" id="attachment-input" multiple>
+      <label for="attachment-input" id="attachment-label">附件</label>
+      <input type="file" id="attachment-input" multiple hidden>
       <ul id="attachment-list"></ul>
     </div>
 
     <div class="actions">
-      <button type="button" id="preview-btn" class="ghost">预览</button>
+      <button type="button" id="preview-btn" class="ghost">→ 预览</button>
       <button type="submit" id="send-btn">发送</button>
     </div>
   </form>
 
   <div id="preview-panel" class="hidden">
     <div id="preview-content"></div>
-    <button type="button" id="close-preview" class="ghost">← 返回编辑</button>
+    <button type="button" id="close-preview" class="ghost">← 返回</button>
   </div>
 
   <div id="status" class="hidden"></div>

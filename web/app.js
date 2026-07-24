@@ -68,8 +68,6 @@ function renderAttachmentList() {
     li.appendChild(rm);
     attachmentList.appendChild(li);
   });
-
-  attachmentList.style.display = selectedFiles.length ? 'flex' : 'none';
 }
 
 // Preview toggle.
