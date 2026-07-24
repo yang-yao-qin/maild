@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"maild/internal/config"
@@ -67,6 +69,7 @@ func (s *Server) registerRoutes(webDir string) {
 }
 
 // handleSend processes POST /api/send requests.
+// Accepts both application/json (no attachments) and multipart/form-data (with attachments).
 func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.writeJSON(w, http.StatusMethodNotAllowed, sendResponse{
@@ -76,31 +79,104 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse request body.
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		s.writeJSON(w, http.StatusBadRequest, sendResponse{
-			Success: false,
-			Message: "Failed to read request body.",
-		})
-		return
-	}
-	defer r.Body.Close()
+	var (
+		req         sendRequest
+		attachments []mail.Attachment
+	)
 
-	var req sendRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.writeJSON(w, http.StatusBadRequest, sendResponse{
-			Success: false,
-			Message: "Invalid JSON. Expected: from, to, subject, markdown.",
-		})
-		return
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		// Multipart: parse form fields and file uploads.
+		maxMem := s.cfg.Server.MaxAttachmentSize.Bytes()
+		if maxMem <= 0 {
+			maxMem = 10 << 20
+		}
+		if err := r.ParseMultipartForm(maxMem); err != nil {
+			s.writeJSON(w, http.StatusBadRequest, sendResponse{
+				Success: false,
+				Message: fmt.Sprintf("Failed to parse form data: %v", err),
+			})
+			return
+		}
+		defer r.Body.Close()
+
+		req.From = strings.TrimSpace(r.FormValue("from"))
+		req.To = strings.TrimSpace(r.FormValue("to"))
+		req.Subject = strings.TrimSpace(r.FormValue("subject"))
+		req.Markdown = strings.TrimSpace(r.FormValue("markdown"))
+
+		// Process uploaded files.
+		files := r.MultipartForm.File["attachments"]
+		var totalSize int64
+		for _, fh := range files {
+			totalSize += fh.Size
+		}
+		if totalSize > s.cfg.Server.MaxAttachmentSize.Bytes() {
+			s.writeJSON(w, http.StatusBadRequest, sendResponse{
+				Success: false,
+				Message: fmt.Sprintf("Total attachment size (%d bytes) exceeds limit (%d bytes).",
+					totalSize, s.cfg.Server.MaxAttachmentSize.Bytes()),
+			})
+			return
+		}
+
+		for _, fh := range files {
+			file, err := fh.Open()
+			if err != nil {
+				s.writeJSON(w, http.StatusInternalServerError, sendResponse{
+					Success: false,
+					Message: fmt.Sprintf("Failed to read attachment %q: %v", fh.Filename, err),
+				})
+				return
+			}
+			content, err := io.ReadAll(file)
+			file.Close()
+			if err != nil {
+				s.writeJSON(w, http.StatusInternalServerError, sendResponse{
+					Success: false,
+					Message: fmt.Sprintf("Failed to read attachment %q: %v", fh.Filename, err),
+				})
+				return
+			}
+
+			ct := mime.TypeByExtension(filepath.Ext(fh.Filename))
+			if ct == "" {
+				ct = http.DetectContentType(content)
+			}
+
+			attachments = append(attachments, mail.Attachment{
+				Filename:    fh.Filename,
+				ContentType: ct,
+				Content:     content,
+			})
+		}
+	} else {
+		// JSON: original behavior, no attachments.
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			s.writeJSON(w, http.StatusBadRequest, sendResponse{
+				Success: false,
+				Message: "Failed to read request body.",
+			})
+			return
+		}
+		defer r.Body.Close()
+
+		if err := json.Unmarshal(body, &req); err != nil {
+			s.writeJSON(w, http.StatusBadRequest, sendResponse{
+				Success: false,
+				Message: "Invalid JSON. Expected: from, to, subject, markdown.",
+			})
+			return
+		}
+
+		req.From = strings.TrimSpace(req.From)
+		req.To = strings.TrimSpace(req.To)
+		req.Subject = strings.TrimSpace(req.Subject)
+		req.Markdown = strings.TrimSpace(req.Markdown)
 	}
 
-	// Validate required fields.
-	req.From = strings.TrimSpace(req.From)
-	req.To = strings.TrimSpace(req.To)
-	req.Subject = strings.TrimSpace(req.Subject)
-	req.Markdown = strings.TrimSpace(req.Markdown)
+	// --- validation (shared by both paths) ---
 
 	if req.From == "" || req.To == "" || req.Subject == "" || req.Markdown == "" {
 		s.writeJSON(w, http.StatusBadRequest, sendResponse{
@@ -110,11 +186,9 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate sender identity: From must be one of the configured senders.
+	// Validate sender identity.
 	fromAddr, ok := s.cfg.Senders[req.From]
 	if !ok {
-		// The request may have the email address directly (for backward compat),
-		// or the label. Check both.
 		valid := false
 		for _, addr := range s.cfg.Senders {
 			if addr == req.From {
@@ -133,7 +207,7 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Prevent batch sending: reject multiple recipients.
+	// Prevent batch sending.
 	if strings.Contains(req.To, ",") {
 		s.writeJSON(w, http.StatusBadRequest, sendResponse{
 			Success: false,
@@ -155,10 +229,11 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 
 	// Send the email via the provider.
 	m := mail.Mail{
-		From:     fromAddr,
-		To:       req.To,
-		Subject:  req.Subject,
-		HTMLBody: html,
+		From:        fromAddr,
+		To:          req.To,
+		Subject:     req.Subject,
+		HTMLBody:    html,
+		Attachments: attachments,
 	}
 
 	if err := s.provider.Send(m); err != nil {
@@ -170,7 +245,11 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("INFO  sent: from=%s to=%s subject=%q", fromAddr, req.To, req.Subject)
+	if len(attachments) > 0 {
+		log.Printf("INFO  sent: from=%s to=%s subject=%q attachments=%d", fromAddr, req.To, req.Subject, len(attachments))
+	} else {
+		log.Printf("INFO  sent: from=%s to=%s subject=%q", fromAddr, req.To, req.Subject)
+	}
 
 	s.writeJSON(w, http.StatusOK, sendResponse{
 		Success: true,

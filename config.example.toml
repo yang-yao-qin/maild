@@ -3,6 +3,8 @@
 [server]
 # 监听地址 — 必须为 127.0.0.1，仅允许本机访问
 address = "127.0.0.1:8080"
+# 单封邮件附件总大小上限
+max_attachment_size = "10MB"
 
 [resend]
 # Resend API Key — https://resend.com/api-keys

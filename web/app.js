@@ -11,6 +11,11 @@ const previewPanel = document.getElementById('preview-panel');
 const previewContent = document.getElementById('preview-content');
 const closePreviewBtn = document.getElementById('close-preview');
 const statusEl = document.getElementById('status');
+const attachmentInput = document.getElementById('attachment-input');
+const attachmentList = document.getElementById('attachment-list');
+
+// Track selected files so we can rebuild the FileList after modification.
+let selectedFiles = [];
 
 // Load sender identities — display email addresses only, no labels.
 async function loadSenders() {
@@ -30,6 +35,41 @@ async function loadSenders() {
     fromSelect.innerHTML = '<option value="">加载失败</option>';
     showStatus('error', '无法加载发件人列表，请确认服务是否运行。');
   }
+}
+
+// --- Attachments ---
+
+attachmentInput.addEventListener('change', () => {
+  // Merge newly selected files into our tracked array.
+  for (const f of attachmentInput.files) {
+    // Avoid duplicate filenames.
+    if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
+      selectedFiles.push(f);
+    }
+  }
+  attachmentInput.value = '';
+  renderAttachmentList();
+});
+
+function renderAttachmentList() {
+  attachmentList.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.textContent = f.name;
+
+    const rm = document.createElement('button');
+    rm.textContent = '×';
+    rm.title = '移除';
+    rm.addEventListener('click', () => {
+      selectedFiles.splice(i, 1);
+      renderAttachmentList();
+    });
+
+    li.appendChild(rm);
+    attachmentList.appendChild(li);
+  });
+
+  attachmentList.style.display = selectedFiles.length ? 'flex' : 'none';
 }
 
 // Preview toggle.
@@ -69,11 +109,26 @@ form.addEventListener('submit', async (e) => {
   hideStatus();
 
   try {
-    const resp = await fetch('/api/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to, subject, markdown }),
-    });
+    let resp;
+    if (selectedFiles.length > 0) {
+      // Multipart: send fields + attachments.
+      const fd = new FormData();
+      fd.append('from', from);
+      fd.append('to', to);
+      fd.append('subject', subject);
+      fd.append('markdown', markdown);
+      for (const f of selectedFiles) {
+        fd.append('attachments', f);
+      }
+      resp = await fetch('/api/send', { method: 'POST', body: fd });
+    } else {
+      // JSON: no attachments (backward compatible).
+      resp = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, subject, markdown }),
+      });
+    }
 
     const data = await resp.json();
 
@@ -82,6 +137,8 @@ form.addEventListener('submit', async (e) => {
       toInput.value = '';
       subjectInput.value = '';
       markdownTextarea.value = '';
+      selectedFiles = [];
+      renderAttachmentList();
     } else {
       showStatus('error', data.message);
     }

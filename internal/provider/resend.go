@@ -2,6 +2,7 @@ package provider
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,10 +44,17 @@ func NewResendProvider(apiKey string) *ResendProvider {
 
 // resendRequest is the JSON payload sent to the Resend API.
 type resendRequest struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Subject string `json:"subject"`
-	HTML    string `json:"html"`
+	From        string             `json:"from"`
+	To          string             `json:"to"`
+	Subject     string             `json:"subject"`
+	HTML        string             `json:"html"`
+	Attachments []resendAttachment `json:"attachments,omitempty"`
+}
+
+// resendAttachment is a single attachment in the Resend API format.
+type resendAttachment struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"` // base64-encoded
 }
 
 // Send delivers an email via the Resend API.
@@ -56,6 +64,16 @@ func (p *ResendProvider) Send(m mail.Mail) error {
 		To:      m.To,
 		Subject: m.Subject,
 		HTML:    m.HTMLBody,
+	}
+
+	if len(m.Attachments) > 0 {
+		payload.Attachments = make([]resendAttachment, len(m.Attachments))
+		for i, a := range m.Attachments {
+			payload.Attachments[i] = resendAttachment{
+				Filename: a.Filename,
+				Content:  base64.StdEncoding.EncodeToString(a.Content),
+			}
+		}
 	}
 
 	body, err := json.Marshal(payload)
