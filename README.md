@@ -1,6 +1,6 @@
 # maild
 
-基于 Resend API 的本地 Markdown 邮件编辑器。
+基于 Resend API 的本地 Markdown 邮件发送客户端。
 
 maild 不是邮件客户端。它不收信、不存邮件、不实现 IMAP / SMTP。
 它只做一件事：把 Markdown 写成邮件，调用 API 发出。
